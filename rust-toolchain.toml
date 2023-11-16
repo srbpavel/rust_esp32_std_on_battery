@@ -1,0 +1,14 @@
+[toolchain]
+# https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
+#
+# <channel>[-<date>]
+#
+# <channel>       = stable|beta|nightly|<major.minor.patch>
+# <date>          = YYYY-MM-DD
+#
+# rustc 1.76.0-nightly (ba7c7a301 2023-11-13
+# https://static.rust-lang.org/dist/2023-11-13
+channel = "nightly-2023-11-13"
+#channel = "nightly"
+
+components = ["rust-src"]

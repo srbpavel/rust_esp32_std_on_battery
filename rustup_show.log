@@ -1,0 +1,28 @@
+Default host: x86_64-unknown-linux-gnu
+rustup home:  /home/conan/.rustup
+
+installed toolchains
+--------------------
+
+stable-x86_64-unknown-linux-gnu (default)
+(timeout reading rustc version)
+
+nightly-2022-03-10-x86_64-unknown-linux-gnu
+rustc 1.61.0-nightly (458262b13 2022-03-09)
+
+nightly-2022-12-07-x86_64-unknown-linux-gnu
+rustc 1.67.0-nightly (b28d30e1e 2022-12-06)
+
+nightly-x86_64-unknown-linux-gnu
+rustc 1.76.0-nightly (ba7c7a301 2023-11-13)
+
+1.56-x86_64-unknown-linux-gnu
+rustc 1.56.1 (59eed8a2a 2021-11-01)
+
+
+active toolchain
+----------------
+
+nightly-x86_64-unknown-linux-gnu (overridden by '/home/conan/git/srbpavel/rust_esp32_std_on_battery/rust-toolchain.toml')
+rustc 1.76.0-nightly (ba7c7a301 2023-11-13)
+
