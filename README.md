@@ -1,0 +1,2 @@
+# rust_esp32_std_on_battery
+on_battery
