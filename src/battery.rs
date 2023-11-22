@@ -5,17 +5,13 @@ use log::info;
 #[allow(unused_imports)]
 use log::warn;
 
-use esp_idf_hal::adc::AdcChannelDriver;
-
-// Trait esp_idf_hal::gpio::ADCPin
-// Trait esp_idf_hal::gpio::Pin
 use esp_idf_hal::gpio::ADCPin;
-
 use esp_idf_hal::peripheral::Peripheral;
 
 use esp_idf_hal::adc;
-use esp_idf_hal::adc::AdcDriver;
 use esp_idf_hal::adc::Adc;
+use esp_idf_hal::adc::AdcChannelDriver;
+use esp_idf_hal::adc::AdcDriver;
 
 use esp_idf_hal::delay::FreeRtos;
 
