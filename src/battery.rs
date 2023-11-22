@@ -43,13 +43,8 @@ pub enum Status {
 pub struct Battery<PIN, ADC, const ATTN: u32> {
     pub gpio: PIN,
     // todo!() -> try harder:
-    // as we can measure 3or more bateries we need access to adc1 or adc2 
-    // at multiple places -> ? Arc<Mutex> ???
-    //pub adc: ADC,
     pub adc: std::sync::Arc<std::sync::Mutex<ADC>>,
-    //pub adc: std::sync::Arc<ADC>,
     pub delay_ms: u32,
-    //pub receiver: Receiver<Command>,
     pub receiver: std::sync::Arc<std::sync::Mutex<Receiver<Command>>>,
     pub sender: Sender<Measurement>,
 }
@@ -69,59 +64,64 @@ where
                 Ok(mut cd) => {
                     let adc_driver = AdcDriver::new(
                         //self.adc,
-                        self.adc.lock().unwrap(), // NOT SAFE !!! todo
+                        self.adc
+                            .lock()
+                            .unwrap(), // NOT SAFE !!! todo
                         &adc::config::Config::new().calibration(true),
                     );
                     
                     if let Ok(mut d) = adc_driver {
-                        //while let Ok(channel_data) = self.receiver.recv() {
-                        while let Ok(channel_data) = self.receiver.lock().unwrap().recv() {
-                            match channel_data {
-                                Command::Measure => {
-                                    let mut measurement = Measurement::default();
-                                    // todo!() via conf?
-                                    let mut counter = 0;
-                                    let mut values = Vec::new();
-                                    
-                                    while counter < REPETITION {
-                                        counter += 1;
+                        while let Ok(channel_data) =
+                            self.receiver
+                            .lock()
+                            .unwrap()
+                            .recv() {
+                                match channel_data {
+                                    Command::Measure => {
+                                        let mut measurement = Measurement::default();
+                                        // todo!() via conf?
+                                        let mut counter = 0;
+                                        let mut values = Vec::new();
                                         
-                                        match d.read(&mut cd) {
-                                            Ok(value) => {
-                                                // DEBUG
-                                                warn!("$$$ PIN: {pin_id} [{counter:03}] {value} mV");
-                                                values.push(value);
-                                                
-                                            },
-                                            Err(_e) => {
-                                                // todo!()
-                                            },
+                                        while counter < REPETITION {
+                                            counter += 1;
+                                            
+                                            match d.read(&mut cd) {
+                                                Ok(value) => {
+                                                    // DEBUG
+                                                    warn!("$$$ PIN: {pin_id} [{counter:03}] {value} mV");
+                                                    values.push(value);
+                                                    
+                                                },
+                                                Err(_e) => {
+                                                    // todo!()
+                                                },
+                                            }
+                                            
+                                            FreeRtos::delay_ms(self.delay_ms);
                                         }
                                         
-                                        FreeRtos::delay_ms(self.delay_ms);
-                                    }
-                                    
-                                    let average = values
-                                        .iter()
-                                        .sum::<u16>() as f32
-                                        / (values.len() as f32);
-                                    
-                                    measurement.voltage = average * VOLTAGE_COEFICIENT;
-                                    
-                                    // DEBUG
-                                    warn!("### average: {}mV * coef: {} -> {}",
-                                          average,
-                                          VOLTAGE_COEFICIENT,
-                                          measurement.voltage,
-                                    );
-                                    
-                                    // send measurement
-                                    if let Err(_e) = self.sender.send(measurement) {
-                                        // todo!()
-                                    }
-                                },
+                                        let average = values
+                                            .iter()
+                                            .sum::<u16>() as f32
+                                            / (values.len() as f32);
+                                        
+                                        measurement.voltage = average * VOLTAGE_COEFICIENT;
+                                        
+                                        // DEBUG
+                                        warn!("### average: {}mV * coef: {} -> {}",
+                                              average,
+                                              VOLTAGE_COEFICIENT,
+                                              measurement.voltage,
+                                        );
+                                        
+                                        // send measurement
+                                        if let Err(_e) = self.sender.send(measurement) {
+                                            // todo!()
+                                        }
+                                    },
+                                }
                             }
-                        }
                     }
                 },
                 Err(_e) => {
@@ -138,22 +138,14 @@ pub enum Command {
 
 #[derive(Debug)]
 pub struct Measurement {
-    //pub id: u8,
     pub voltage: f32,
-    //pub gpio: Option<String>,
-    //pub adc: Option<String>,
-    //pub status: Status,
 }
 
 impl Default for Measurement {
     //
     fn default() -> Self {
         Self {
-            //id: 0,
             voltage: 0.0,
-            //gpio: None,
-            //adc: None,
-            //status: Status::Init,
         }
     }
 }
