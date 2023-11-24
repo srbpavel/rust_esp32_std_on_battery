@@ -5,8 +5,9 @@ use log::info;
 #[allow(unused_imports)]
 use log::warn;
 
-use std::sync::mpsc::Sender;
+use embedded_hal::blocking::delay::DelayMs;
 
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -72,7 +73,7 @@ where
                       delay: &mut D,
     ) -> Result<(), esp_idf_sys::EspError>
     where
-        D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
+        D: DelayMs<u32> + std::marker::Send + 'static,
     {
         match self.adc_peripheral.lock() {
             Ok(adc_peripheral) => {
@@ -178,7 +179,7 @@ fn read_adc<'a, PIN: ADCPin, ADC, const ATTN: u32, D>(
 where
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
     ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
-    D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
+    D: DelayMs<u32> + std::marker::Send + 'static,
 {
     let mut counter = 0;
     let mut values = Vec::new();
@@ -232,6 +233,8 @@ fn calculate_measured_data(pin_id: i32,
 //
 // just one measurement, without any struct a then we can go deepsleep or ...
 //
+// this cannot be used in std::thread::spawn as it will panic!!!
+//
 pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
     gpio: Arc<Mutex<PIN>>,
     adc_peripheral: Arc<Mutex<ADC>>,
@@ -243,7 +246,7 @@ pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
 where
     ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
-    D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
+    D: DelayMs<u32> + std::marker::Send + 'static,
 {
     match gpio.lock() {
         Ok(gpio) => {
@@ -283,6 +286,88 @@ where
         },
         Err(_e) => {},
     }
+    
+    Ok(())
+}
+
+//
+pub fn measure_channel_driver_once<const ATTN: u32, PIN, ADC, D>(
+    pin_id: i32,
+    adc_channel_driver: &mut AdcChannelDriver<ATTN, PIN>,
+    adc_peripheral: Arc<Mutex<ADC>>,
+    //adc_peripheral: ADC,
+    //sender: Sender<Measurement>,
+    voltage_coeficient: f32,
+    battery_warning_boundary: f32,
+    delay: &mut D,
+) -> Result<(), esp_idf_sys::EspError> 
+where
+    ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
+    PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
+    D: DelayMs<u32> + std::marker::Send + 'static,
+{
+    /* // DIRECT
+    let adc_driver = AdcDriver::new(
+        adc_peripheral,
+        &adc::config::Config::new().calibration(true),
+    )?;
+    
+    let values = read_adc(adc_channel_driver,
+                          adc_driver,
+                          pin_id,
+                          delay,
+    )?;
+    
+    let measurement = calculate_measured_data(pin_id,
+                                              values,
+                                              voltage_coeficient,
+    );
+    
+    if measurement.get_voltage() < battery_warning_boundary {
+        error!("BATTERY too low, replace with new !!!");
+    }
+
+    /*
+    // send measurement
+    if let Err(e) = sender.send(measurement) {
+        error!("Error: sender .send(measurement) -> {e:?}");
+    }
+    */
+    */ 
+    
+    // /* // ARC
+    match adc_peripheral.lock() {
+        Ok(adc_peripheral) => {
+            let adc_driver = AdcDriver::new(
+                adc_peripheral,
+                &adc::config::Config::new().calibration(true),
+            )?;
+            
+            let values = read_adc(adc_channel_driver,
+                                  adc_driver,
+                                  pin_id,
+                                  delay,
+            )?;
+            
+            let measurement = calculate_measured_data(pin_id,
+                                                      values,
+                                                      voltage_coeficient,
+            );
+            
+            if measurement.get_voltage() < battery_warning_boundary {
+                error!("BATTERY too low, replace with new !!!");
+            }
+
+            /*
+            // send measurement
+            if let Err(e) = sender.send(measurement) {
+                error!("Error: sender .send(measurement) -> {e:?}");
+            }
+            */
+        },
+        Err(_e) => {},
+    }
+    // */
     
     Ok(())
 }
