@@ -8,3 +8,6 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000
 # Workaround for https://github.com/espressif/esp-idf/issues/7631
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
+
+# PAVEL -> just to try -> it work's but no need for it now
+#CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3=y

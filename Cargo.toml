@@ -34,6 +34,7 @@ embedded-svc = "0.26.4"
 embedded-hal = { version="0.2.7", features = ["unproven"] }
 anyhow = "1"
 log = "0.4"                                  
+#crossbeam = "0.8.2"
 
 [build-dependencies]
 embuild = "0.31.3"
