@@ -24,10 +24,10 @@ use esp_idf_hal::gpio::Pin;
 use esp_idf_hal::delay::FreeRtos;
 //use esp_idf_hal::delay::Ets;
 
-use esp_idf_hal::adc::ADC1;
-//use esp_idf_hal::adc::ADC2;
 use esp_idf_hal::adc::attenuation;
 use esp_idf_hal::adc::AdcChannelDriver;
+use esp_idf_hal::adc::ADC1;
+//use esp_idf_hal::adc::ADC2;
 
 // todo!() -> Config
 const MACHINE_NAME: &str = "peasant";
@@ -57,10 +57,10 @@ const BATTERY_WARNING_BOUNDARY_GPIO4: f32 = 3500.0;
 //const BATTERY_WARNING_BOUNDARY_GPIO5: f32 = 3500.0;
 
 /*
-ADC_ATTEN_DB_0   0 mV ~ 750 mV
-ADC_ATTEN_DB_2_5 0 mV ~ 1050 mV
-ADC_ATTEN_DB_6   0 mV ~ 1300 mV
-ADC_ATTEN_DB_11  0 mV ~ 2500 mV
+ADC_ATTEN_DB_0   | 0 mV ~ 750 mV
+ADC_ATTEN_DB_2_5 | 0 mV ~ 1050 mV
+ADC_ATTEN_DB_6   | 0 mV ~ 1300 mV
+ADC_ATTEN_DB_11  | 0 mV ~ 2500 mV
 */
 const ATTN_ONE: u32 = attenuation::DB_2_5;
 //const ATTN_TWO: u32 = attenuation::DB_2_5;
@@ -105,7 +105,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     // MEASUREMENT -> display/parse/mqtt publish/...
     start_measurement_listener(measurement_receiver);
     
-    //MEASURE via PIN ONCE
+    // MEASURE via PIN ONCE
     warn!("MEASURE via PIN: start");
     if let Err(_e) = battery::measure_pin_once::<_, ADC1, ATTN_ONE, _> (
         pin_adc_2.clone(),
@@ -151,7 +151,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     info!("LISTEN for COMMAND");
     
     let mut sensor_gpio0 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-    //let mut sensor_gpio0 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_0,
         adc_1.clone(),
         measurement_sender.clone(),
@@ -161,7 +160,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     )?;
     
     let mut sensor_gpio1 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-    //let mut sensor_gpio1 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_1,
         adc_1.clone(),
         measurement_sender.clone(),
@@ -172,7 +170,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
 
     /* // gpio used for MEASURE via PIN ONCE
     let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-    //let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
@@ -184,7 +181,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
 
     /* // gpio used for MEASURE via ADC_CHANNEL_DRIVER ONCE
     let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-    //let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_3,
         adc_1.clone(),
         measurement_sender.clone(),
@@ -195,7 +191,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     */
     
     let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-    //let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
@@ -204,7 +199,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         BATTERY_WARNING_BOUNDARY_GPIO4,
     )?;
 
-    // COMMAND listen and MEASURE
+    // COMMAND -> listen and start measuring
     std::thread::spawn(move || {
         info!("thread LISTEN + MEASURE");
 
@@ -229,8 +224,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     });
 
     // todo!() -> deep_sleep
-    // via config measure once + sleep
-    // via config infinite measuare
     
     Ok(())
 }
@@ -298,15 +291,14 @@ where
                 }
             delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
-            /*
+            // /*
             // ADC_2
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(5i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            sleep.delay_ms(100_u32);
-            */
+            // */
             
             delay.delay_ms(DELAY_SLEEP_DURATION_MS);
         }
