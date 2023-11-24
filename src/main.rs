@@ -17,6 +17,7 @@ use std::sync::Mutex;
 
 use esp_idf_hal::delay::FreeRtos;
 //use esp_idf_hal::delay::Ets;
+use embedded_hal::blocking::delay::DelayMs;
 
 use esp_idf_sys as _;
 
@@ -26,10 +27,28 @@ use esp_idf_hal::adc::attenuation;
 
 // todo!() -> Config
 const MACHINE_NAME: &str = "peasant";
+
+pub const ADC_READ_REPETITION: u8 = 10;
+
 const DELAY_SLEEP_DURATION_MS: u32 = 30*1000;
 const DELAY_COMMAND_DURATION_MS: u32 = 100;
 pub const DELAY_MEASUREMENT_MS: u32 = 100;
-pub const BATTERY_WARNING_BOUNDARY: f32 = 3500.0;
+
+const VOLTAGE_DIVIDER_COEFICIENT_DEFAULT: f32 = 5.0;
+const VOLTAGE_DIVIDER_COEFICIENT_GPI00: f32 = 4.97;
+const VOLTAGE_DIVIDER_COEFICIENT_GPI01: f32 = 5.03;
+//const VOLTAGE_DIVIDER_COEFICIENT_GPI02: f32 = 5.0;  
+const VOLTAGE_DIVIDER_COEFICIENT_GPI03: f32 = 5.1;
+const VOLTAGE_DIVIDER_COEFICIENT_GPI04: f32 = 5.11;
+//const VOLTAGE_DIVIDER_COEFICIENT_GPI05: f32 = 5.0;
+
+const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
+const BATTERY_WARNING_BOUNDARY_GPI00: f32 = 3500.0;
+const BATTERY_WARNING_BOUNDARY_GPI01: f32 = 3500.0;
+//pub const BATTERY_WARNING_BOUNDARY_GPI02: f32 = 3500.0;
+const BATTERY_WARNING_BOUNDARY_GPI03: f32 = 3500.0;
+const BATTERY_WARNING_BOUNDARY_GPI04: f32 = 3500.0;
+//const BATTERY_WARNING_BOUNDARY_GPI05: f32 = 3500.0;
 
 /*
 ADC_ATTEN_DB_0
@@ -78,15 +97,40 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     //
     // ADC1
     let pin_adc_0 = peripherals.pins.gpio0; // ADC1-0 GPIO0
+    //let pin_adc_0 = Arc::new(Mutex::new(pin_adc_0));
+
     let pin_adc_1 = peripherals.pins.gpio1; // ADC1-1 GPIO1
+    //let pin_adc_1 = Arc::new(Mutex::new(pin_adc_1));
+
     let pin_adc_2 = peripherals.pins.gpio2; // ADC1-2 GPIO2
+    let pin_adc_2 = Arc::new(Mutex::new(pin_adc_2));
+
     let pin_adc_3 = peripherals.pins.gpio3; // ADC1-3 GPI03 
-    let pin_adc_4 = peripherals.pins.gpio4; // ADC1-4 GPI04 
+    //let pin_adc_3 = Arc::new(Mutex::new(pin_adc_3));
+
+    let pin_adc_4 = peripherals.pins.gpio4; // ADC1-4 GPI04
+    //let pin_adc_4 = Arc::new(Mutex::new(pin_adc_4));
+
     // ADC2
     //let pin_adc_5 = peripherals.pins.gpio5; // ADC2-0 GPIO5    
 
     // MEASUREMENT display/parse/mqtt publish/...
     start_measurement_listener(measurement_receiver);
+    
+    //MEASURE_PIN_ONCE
+    warn!("MEASURE_PIN_ONCE: start");
+    if let Err(_e) = battery::measure_pin_once::<_, ADC1, ATTN_ONE, FreeRtos>(
+        pin_adc_2.clone(),
+        adc_1.clone(),
+        measurement_sender.clone(),
+        VOLTAGE_DIVIDER_COEFICIENT_DEFAULT,
+        BATTERY_WARNING_BOUNDARY_DEFAULT,
+        &mut delay_measure,
+    ) {
+        
+    }
+    warn!("MEASURE_PIN_ONCE: end + sleep/wait");
+    FreeRtos{}.delay_ms(10*1000_u32);
     
     // COMMAND producer
     start_command_producer(command_sender,
@@ -101,8 +145,9 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_0,
         adc_1.clone(),
         measurement_sender.clone(),
-        4.97,
+        VOLTAGE_DIVIDER_COEFICIENT_GPI00,
         //&mut delay,
+        BATTERY_WARNING_BOUNDARY_GPI00,
     )?;
     
     let mut sensor_gpio1 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
@@ -110,26 +155,31 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_1,
         adc_1.clone(),
         measurement_sender.clone(),
-        5.03,
+        VOLTAGE_DIVIDER_COEFICIENT_GPI01,
         //&mut delay,
+        BATTERY_WARNING_BOUNDARY_GPI01,
     )?;
-    
+
+    /*
     let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
     //let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
-        5.0,
+        VOLTAGE_DIVIDER_COEFICIENT_DEFAULT,
         //&mut delay,
+        BATTERY_WARNING_BOUNDARY_DEFAULT,
     )?;
+    */
     
     let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
     //let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_3,
         adc_1.clone(),
         measurement_sender.clone(),
-        5.10,
+        VOLTAGE_DIVIDER_COEFICIENT_GPI03,
         //&mut delay,
+        BATTERY_WARNING_BOUNDARY_GPI03,
     )?;
     
     let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
@@ -137,8 +187,10 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
-        5.11,
+        //5.11,
+        VOLTAGE_DIVIDER_COEFICIENT_GPI04,
         //&mut delay,
+        BATTERY_WARNING_BOUNDARY_GPI04,
     )?;
 
     // COMMAND listen and MEASURE
@@ -153,16 +205,11 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
             match channel_data {
                 battery::Command::Measure(pin_id) => {
                     match pin_id {
-                        0 => if let Err(_e) = 
-                            sensor_gpio0.measure(&mut delay_measure) {},
-                        1 => if let Err(_e) = 
-                            sensor_gpio1.measure(&mut delay_measure) {},
-                        2 => if let Err(_e) = 
-                            sensor_gpio2.measure(&mut delay_measure) {},
-                        3 => if let Err(_e) = 
-                            sensor_gpio3.measure(&mut delay_measure) {},
-                        4 => if let Err(_e) = 
-                            sensor_gpio4.measure(&mut delay_measure) {},
+                        0 => if let Err(_e) = sensor_gpio0.measure(&mut delay_measure) {},
+                        1 => if let Err(_e) = sensor_gpio1.measure(&mut delay_measure) {},
+                        //2 => if let Err(_e) = sensor_gpio2.measure(&mut delay_measure) {},
+                        3 => if let Err(_e) = sensor_gpio3.measure(&mut delay_measure) {},
+                        4 => if let Err(_e) = sensor_gpio4.measure(&mut delay_measure) {},
                         //5 => if let Err(_e) = sensor_gpio5.measure() {}
                         _ => {},
                     }
@@ -190,9 +237,11 @@ fn start_measurement_listener(
                   channel_data,
             );
 
+            /*
             if channel_data.get_voltage() < BATTERY_WARNING_BOUNDARY {
                 error!("BATTERY too low, replace with new !!!");
             }
+            */
         }
     });
 }

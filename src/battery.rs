@@ -18,11 +18,7 @@ use esp_idf_hal::adc::Adc;
 use esp_idf_hal::adc::AdcChannelDriver;
 use esp_idf_hal::adc::AdcDriver;
 
-const REPETITION: u8 = 10;
-// todo!() conf of + fn
-//const DELAY_MEASUREMENT_MS: u32 = 100; // 1000
-//const LIMIT_BOUNDRY_LOW: f32 = 10.0;
-
+// for periodic measuring
 //
 // https://users.rust-lang.org/t/how-to-store-a-trait-as-field-of-a-struct/87762/2
 //
@@ -32,8 +28,9 @@ pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
     adc_channel_driver: AdcChannelDriver<'a, ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    coeficient: f32,
+    voltage_coeficient: f32,
     //delay: &'b mut D,
+    battery_warning_boundary: f32,
 }
 
 impl<PIN, ADC, const ATTN: u32> Sensor<'_, PIN, ADC, ATTN>
@@ -43,17 +40,20 @@ where
     ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
     //D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
 {
+
     //
     pub fn new(gpio: PIN,
                adc_peripheral: Arc<Mutex<ADC>>,
                sender: Sender<Measurement>,
-               coeficient: f32,
+               voltage_coeficient: f32,
                //delay: &mut D,
+               battery_warning_boundary: f32,
     ) -> Result<Self, esp_idf_sys::EspError>
      {
          let pin_id = gpio.pin();
          
          let adc_channel_driver: AdcChannelDriver::<ATTN, _> = AdcChannelDriver::new(gpio)?;
+         //let mut adc_channel_driver: AdcChannelDriver::<ATTN, _> = AdcChannelDriver::new(gpio)?;
          
          Ok(
              Self {
@@ -61,11 +61,12 @@ where
                  adc_channel_driver,
                  adc_peripheral,
                  sender,
-                 coeficient,
+                 voltage_coeficient,
+                 battery_warning_boundary,
              }
          )
      }
-
+    
     //
     pub fn measure<D>(&mut self,
                       delay: &mut D,
@@ -75,11 +76,13 @@ where
     {
         match self.adc_peripheral.lock() {
             Ok(adc_peripheral) => {
-                let mut adc_driver = AdcDriver::new(
+                //let mut adc_driver = AdcDriver::new(
+                let adc_driver = AdcDriver::new(
                     adc_peripheral,
                     &adc::config::Config::new().calibration(true),
                 )?;
-                
+
+                /*
                 let mut counter = 0;
                 let mut values = Vec::new();
                 while counter < REPETITION {
@@ -97,11 +100,21 @@ where
 
                     delay.delay_ms(crate::DELAY_MEASUREMENT_MS);
                 }
+                */
+                let values = read_adc(&mut self.adc_channel_driver,
+                                      adc_driver,
+                                      self.pin_id,
+                                      delay,
+                )?;
                 
                 let measurement = calculate_measured_data(self.pin_id,
                                                           values,
-                                                          self.coeficient,
+                                                          self.voltage_coeficient,
                 );
+
+                if measurement.get_voltage() < self.battery_warning_boundary {
+                    error!("BATTERY too low, replace with new !!!");
+                }
                 
                 // send measurement
                 if let Err(e) = self.sender.send(measurement) {
@@ -146,73 +159,48 @@ impl Measurement {
             raw_f32,
         }
     }
-
+    
     //
     pub fn get_voltage(&self) -> f32 {
         self.voltage
     }
 }
 
-/*
 //
-pub fn measure_pin_once<PIN, ADC, const ATTN: u32>(
-    gpio: Arc<Mutex<PIN>>,
-    adc_peripheral: Arc<Mutex<ADC>>,
-    sender: Sender<Measurement>,
-    voltage_coeficient: f32,
-) -> Result<(), esp_idf_sys::EspError>
+// helper fn to have it only on one place
+//
+fn read_adc<'a, PIN: ADCPin, ADC, const ATTN: u32, D>(
+    adc_channel_driver: &mut AdcChannelDriver<'a, ATTN, PIN>,
+    mut adc_driver: esp_idf_hal::adc::AdcDriver<ADC>,
+    pin_id: i32,
+    delay: &mut D,
+) -> Result<Vec<u16>, esp_idf_sys::EspError>
 where
-    ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
+    ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
+    D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
 {
-    match gpio.lock() {
-        Ok(gpio) => {
-            let pin_id = gpio.pin();
-            
-            let mut adc_channel_driver: AdcChannelDriver::< ATTN, _> = AdcChannelDriver::new(gpio)?;
+    let mut counter = 0;
+    let mut values = Vec::new();
 
-            match adc_peripheral.lock() {
-                Ok(adc_peripheral) => {
-                    let mut adc_driver = AdcDriver::new(
-                        adc_peripheral,
-                        &adc::config::Config::new().calibration(true),
-                    )?;
-
-                    let mut counter = 0;
-                    let mut values = Vec::new();
-                    while counter < REPETITION {
-                        counter += 1;
-                        
-                        let value = adc_driver.read(&mut adc_channel_driver)?;
-
-                        // DEBUG
-                        warn!("$$$ PIN: {pin_id} [{counter:03}] {value} mV");
-
-                        values.push(value);
-                        
-                        FreeRtos::delay_ms(DELAY_MEASUREMENT_MS);
-                        //Ets::delay_ms(DELAY_MEASUREMENT_MS);
-                    }
-
-                    let measurement = calculate_measured_data(pin_id,
-                                                              values,
-                                                              voltage_coeficient,
-                    );
-
-                    // send measurement
-                    if let Err(e) = sender.send(measurement) {
-                        error!("Error: sender .send(measurement) -> {e:?}");
-                    }
-                },
-                Err(_e) => {},
-            }
-        },
-        Err(_e) => {},
+    while counter < crate::ADC_READ_REPETITION {
+        counter += 1;
+        
+        let value = adc_driver.read(adc_channel_driver)?;
+        
+        // DEBUG
+        warn!("$$$ PIN: {} [{:03}] {value} mV",
+              pin_id,
+              counter,
+        );
+        
+        values.push(value);
+        
+        delay.delay_ms(crate::DELAY_MEASUREMENT_MS);
     }
-    
-    Ok(())
+
+    Ok(values)
 }
-*/
 
 //
 fn calculate_measured_data(pin_id: i32,
@@ -241,3 +229,60 @@ fn calculate_measured_data(pin_id: i32,
     measurement
 }
 
+//
+// just one measurement, without any struct a then we can go deepsleep or ...
+//
+pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
+    gpio: Arc<Mutex<PIN>>,
+    adc_peripheral: Arc<Mutex<ADC>>,
+    sender: Sender<Measurement>,
+    voltage_coeficient: f32,
+    battery_warning_boundary: f32,
+    delay: &mut D,
+) -> Result<(), esp_idf_sys::EspError>
+where
+    ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
+    PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
+    D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
+{
+    match gpio.lock() {
+        Ok(gpio) => {
+            let pin_id = gpio.pin();
+            
+            let mut adc_channel_driver: AdcChannelDriver::< ATTN, _> = AdcChannelDriver::new(gpio)?;
+
+            match adc_peripheral.lock() {
+                Ok(adc_peripheral) => {
+                    let adc_driver = AdcDriver::new(
+                        adc_peripheral,
+                        &adc::config::Config::new().calibration(true),
+                    )?;
+
+                    let values = read_adc(&mut adc_channel_driver,
+                                          adc_driver,
+                                          pin_id,
+                                          delay,
+                    )?;
+                    
+                    let measurement = calculate_measured_data(pin_id,
+                                                              values,
+                                                              voltage_coeficient,
+                    );
+
+                    if measurement.get_voltage() < battery_warning_boundary {
+                        error!("BATTERY too low, replace with new !!!");
+                    }
+                    
+                    // send measurement
+                    if let Err(e) = sender.send(measurement) {
+                        error!("Error: sender .send(measurement) -> {e:?}");
+                    }
+                },
+                Err(_e) => {},
+            }
+        },
+        Err(_e) => {},
+    }
+    
+    Ok(())
+}
