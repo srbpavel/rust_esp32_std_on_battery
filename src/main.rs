@@ -122,20 +122,17 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     //MEASURE via ADC_CHANNEL_DRIVER ONCE
     let pin_id = pin_adc_3.pin();
     let mut adc_channel_driver_three: AdcChannelDriver::<ATTN_ONE, _> = AdcChannelDriver::new(pin_adc_3)?;
-    //let mut adc_channel_driver_five: AdcChannelDriver::<ATTN_TWO, _> = AdcChannelDriver::new(pin_adc_5)?;
-
     let adc_1_clone = adc_1.clone();
+    let measurement_sender_clone = measurement_sender.clone();
+    
     std::thread::spawn(move || {
         warn!("MEASURE via ADC_CHANNEL_DRIVER: start");
 
         if let Err(_e) = battery::measure_channel_driver_once::<ATTN_ONE, _, ADC1, _> (
-        //if let Err(_e) = battery::measure_channel_driver_once::<ATTN_TWO, _, ADC2, _> (
             pin_id,
             &mut adc_channel_driver_three,
-            //&mut adc_channel_driver_five,
-            adc_1_clone,//.clone(),
-            //adc_2,
-            //measurement_sender.clone(),
+            adc_1_clone,
+            measurement_sender_clone,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO3,
             BATTERY_WARNING_BOUNDARY_GPIO3,
             &mut FreeRtos{},
@@ -173,7 +170,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         BATTERY_WARNING_BOUNDARY_GPIO1,
     )?;
 
-    /* // gpio used for MEASUER via PIN ONCE
+    /* // gpio used for MEASURE via PIN ONCE
     let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
     //let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE, FreeRtos>::new(
         pin_adc_2,
@@ -202,7 +199,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
-        //5.11,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO4,
@@ -225,7 +221,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
                         //2 => if let Err(_e) = sensor_gpio2.measure(&mut delay_after_measure) {},
                         //3 => if let Err(_e) = sensor_gpio3.measure(&mut delay_after_measure) {},
                         4 => if let Err(_e) = sensor_gpio4.measure(&mut delay_after_measure) {},
-                        //5 => if let Err(_e) = sensor_gpio5.measure() {}
                         _ => {},
                     }
                 },
@@ -251,12 +246,6 @@ fn start_measurement_listener(
             info!("MEASUREMENT value: {:?}",
                   channel_data,
             );
-
-            /*
-            if channel_data.get_voltage() < BATTERY_WARNING_BOUNDARY {
-                error!("BATTERY too low, replace with new !!!");
-            }
-            */
         }
     });
 }
@@ -266,7 +255,7 @@ fn start_command_producer<D>(command_sender: Sender<battery::Command>,
                              mut delay: D
 )
 where
-    D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
+    D: DelayMs<u32> + std::marker::Send + 'static,
 {
     std::thread::spawn(move || {
         info!("thread LOOP -> Command::Measure(pin_id)");
