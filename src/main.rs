@@ -35,24 +35,36 @@ const MACHINE_NAME: &str = "peasant";
 pub const ADC_READ_REPETITION: u8 = 10;
 
 const DELAY_SLEEP_DURATION_MS: u32 = 30*1000;
-const DELAY_COMMAND_DURATION_MS: u32 = 100;
+//const DELAY_COMMAND_DURATION_MS: u32 = 100;
 pub const DELAY_MEASUREMENT_MS: u32 = 100;
 
-//const BATTERY_VOLTAGE: f32 = 4.2;
-//const VOLTAGE_DIVIDER: &str = "4.134v : 0.810 = 5.10 coeficient";
-//const VOLTAGE_DIVIDER_COEFICIENT_DEFAULT: f32 = 5.0;
+#[allow(unused)]
+const VOLTAGE_DIVIDER_COEFICIENT_DEFAULT: f32 = 5.0;
+#[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO0: f32 = 4.97;
+#[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO1: f32 = 5.03;
-const VOLTAGE_DIVIDER_COEFICIENT_GPIO2: f32 = 5.0;  
+// 4.138v : 0.530 = 7.80 coeficient"
+#[allow(unused)]
+const VOLTAGE_DIVIDER_COEFICIENT_GPIO2: f32 = 7.8;  
+// 4.134v : 0.810 = 5.10 coeficient
+#[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO3: f32 = 5.1;
+#[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO4: f32 = 5.11;
 //const VOLTAGE_DIVIDER_COEFICIENT_GPIO5: f32 = 5.0;
 
-//const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
+#[allow(unused)]
+const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
+#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO0: f32 = 3500.0;
+#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO1: f32 = 3500.0;
-const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 3500.0;
+#[allow(unused)]
+const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 3700.0;
+#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO3: f32 = 3500.0;
+#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO4: f32 = 3500.0;
 //const BATTERY_WARNING_BOUNDARY_GPIO5: f32 = 3500.0;
 
@@ -95,8 +107,8 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     // ADC1
     let pin_adc_0 = peripherals.pins.gpio0; // ADC1-0 GPIO0
     let pin_adc_1 = peripherals.pins.gpio1; // ADC1-1 GPIO1
+    let pin_adc_1 = Arc::new(Mutex::new(pin_adc_1));
     let pin_adc_2 = peripherals.pins.gpio2; // ADC1-2 GPIO2
-    let pin_adc_2 = Arc::new(Mutex::new(pin_adc_2));
     let pin_adc_3 = peripherals.pins.gpio3; // ADC1-3 GPI03 
     let pin_adc_4 = peripherals.pins.gpio4; // ADC1-4 GPI04
     // ADC2
@@ -108,7 +120,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     // MEASURE via PIN ONCE
     warn!("MEASURE via PIN: start");
     if let Err(_e) = battery::measure_pin_once::<_, ADC1, ATTN_ONE, _> (
-        pin_adc_2.clone(),
+        pin_adc_1.clone(),
         adc_1.clone(),
         measurement_sender.clone(),
         VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
@@ -116,8 +128,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         &mut delay_after_measure,
     ) {}
     warn!("MEASURE via PIN: end + sleep/wait");
-    FreeRtos{}.delay_ms(5*1000_u32);
-    //_
+    delay_after_measure.delay_ms(5*1000_u32);
   
     //MEASURE via ADC_CHANNEL_DRIVER ONCE
     let pin_id = pin_adc_3.pin();
@@ -139,8 +150,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     ) {}
         warn!("MEASURE via ADC_CHANNEL_DRIVER: end + sleep/wait");
     });
-    FreeRtos{}.delay_ms(5*1000_u32);
-    //_
+    delay_after_measure.delay_ms(5*1000_u32);
     
     // COMMAND producer -> just to have some samples
     start_command_producer(command_sender,
@@ -158,7 +168,8 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO0,
     )?;
-    
+
+    /* // gpio used for MEASURE via PIN ONCE
     let mut sensor_gpio1 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
         pin_adc_1,
         adc_1.clone(),
@@ -167,17 +178,16 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO1,
     )?;
-
-    /* // gpio used for MEASURE via PIN ONCE
+    */
+    
     let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
-        VOLTAGE_DIVIDER_COEFICIENT_DEFAULT,
+        VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
         //&mut delay,
-        BATTERY_WARNING_BOUNDARY_DEFAULT,
+        BATTERY_WARNING_BOUNDARY_GPIO2,
     )?;
-    */
 
     /* // gpio used for MEASURE via ADC_CHANNEL_DRIVER ONCE
     let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
@@ -212,8 +222,8 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
                 battery::Command::Measure(pin_id) => {
                     match pin_id {
                         0 => if let Err(_e) = sensor_gpio0.measure(&mut delay_after_measure) {},
-                        1 => if let Err(_e) = sensor_gpio1.measure(&mut delay_after_measure) {},
-                        //2 => if let Err(_e) = sensor_gpio2.measure(&mut delay_after_measure) {},
+                        //1 => if let Err(_e) = sensor_gpio1.measure(&mut delay_after_measure) {},
+                        2 => if let Err(_e) = sensor_gpio2.measure(&mut delay_after_measure) {},
                         //3 => if let Err(_e) = sensor_gpio3.measure(&mut delay_after_measure) {},
                         4 => if let Err(_e) = sensor_gpio4.measure(&mut delay_after_measure) {},
                         _ => {},
@@ -260,21 +270,21 @@ where
                 .send(battery::Command::Measure(3i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            delay.delay_ms(DELAY_COMMAND_DURATION_MS);
+            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(4i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            delay.delay_ms(DELAY_COMMAND_DURATION_MS);
+            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(0i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            delay.delay_ms(DELAY_COMMAND_DURATION_MS);
+            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
@@ -282,24 +292,22 @@ where
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
 
-            delay.delay_ms(DELAY_COMMAND_DURATION_MS);
+            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(2i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            delay.delay_ms(DELAY_COMMAND_DURATION_MS);
+            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
-            // /*
             // ADC_2
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(5i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            // */
-            
+
             delay.delay_ms(DELAY_SLEEP_DURATION_MS);
         }
     });

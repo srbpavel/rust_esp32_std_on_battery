@@ -23,6 +23,31 @@ use esp_idf_hal::adc::AdcDriver;
 //
 // https://users.rust-lang.org/t/how-to-store-a-trait-as-field-of-a-struct/87762/2
 //
+/*
+!!!
+pub struct Sensor<'a, PIN, ADC, const ATTN: u32> {
+!!! why do i need to have PIN: ADCPin when already via WHERE ??? study more !!!
+pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
+!!!
+
+error[E0277]: the trait bound `PIN: ADCPin` is not satisfied
+   --> src/battery.rs:30:25
+    |
+30  |     adc_channel_driver: AdcChannelDriver<'a, ATTN, PIN>,
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ADCPin` is not implemented for `PIN`
+    |
+note: required by a bound in `AdcChannelDriver`
+   --> /home/conan/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-idf-hal-0.42.5/src/adc.rs:123:58
+    |
+123 | pub struct AdcChannelDriver<'d, const A: adc_atten_t, T: ADCPin> {
+    |                                                          ^^^^^^ required by this bound in `AdcChannelDriver`
+help: consider restricting type parameter `PIN`
+    |
+27  | pub struct Sensor<'a, PIN: esp_idf_hal::gpio::ADCPin, ADC, const ATTN: u32> {
+    |                          +++++++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0277`.
+*/
 pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
 //pub struct Sensor<'a, 'b, PIN: ADCPin, ADC, const ATTN: u32, D> {
     pin_id: i32,
@@ -218,7 +243,7 @@ fn calculate_measured_data(pin_id: i32,
 //
 // just one measurement (without any struct) and then we can go deepsleep
 //
-// this cannot be used in std::thread::spawn as it will panic!!!
+// this cannot be used in std::thread::spawn as it will reboot machine!!!
 //
 pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
     gpio: Arc<Mutex<PIN>>,
