@@ -54,6 +54,7 @@ pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
     adc_channel_driver: AdcChannelDriver<'a, ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
+    voltage_expected: f32,
     voltage_coeficient: f32,
     //delay: &'b mut D,
     battery_warning_boundary: f32,
@@ -71,6 +72,7 @@ where
     pub fn new(gpio: PIN,
                adc_peripheral: Arc<Mutex<ADC>>,
                sender: Sender<Measurement>,
+               voltage_expected: f32,
                voltage_coeficient: f32,
                //delay: &mut D,
                battery_warning_boundary: f32,
@@ -86,6 +88,7 @@ where
                  adc_channel_driver,
                  adc_peripheral,
                  sender,
+                 voltage_expected,
                  voltage_coeficient,
                  battery_warning_boundary,
              }
@@ -111,6 +114,7 @@ where
                          self.pin_id,
                          delay,
                          self.sender.clone(),
+                         self.voltage_expected,
                          self.voltage_coeficient,
                          self.battery_warning_boundary,
                 )?;
@@ -131,26 +135,32 @@ pub enum Command {
 #[allow(unused)]
 pub struct Measurement {
     pin_id: i32,
+    voltage_expected: f32,
     voltage: f32,
     voltage_coeficient: f32,
     raw_u16: u16,
     raw_f32: f32,
+    attn: u32,
 }
 
 impl Measurement {
     //
     fn new(pin_id: i32,
+           voltage_expected: f32,
            voltage: f32,
            voltage_coeficient: f32,
            raw_u16: u16,
            raw_f32: f32,
+           attn: u32,
     ) -> Self {
         Self {
             pin_id,
+            voltage_expected,
             voltage,
             voltage_coeficient,
             raw_u16,
             raw_f32,
+            attn,
         }
     }
     
@@ -169,6 +179,7 @@ fn read_adc<'a, PIN: ADCPin, ADC, const ATTN: u32, D>(
     pin_id: i32,
     delay: &mut D,
     sender: Sender<Measurement>,
+    voltage_expected: f32,
     voltage_coeficient: f32,
     battery_warning_boundary: f32,
 ) -> Result<(), esp_idf_sys::EspError>
@@ -198,7 +209,9 @@ where
 
     let measurement = calculate_measured_data(pin_id,
                                               values,
+                                              voltage_expected,
                                               voltage_coeficient,
+                                              ATTN,
     );
     
     if measurement.get_voltage() < battery_warning_boundary {
@@ -216,7 +229,9 @@ where
 //
 fn calculate_measured_data(pin_id: i32,
                            values: Vec<u16>,
+                           voltage_expected: f32,
                            voltage_coeficient: f32,
+                           attn: u32,
 ) -> Measurement {
     let average: f32 = values
         .iter()
@@ -225,10 +240,12 @@ fn calculate_measured_data(pin_id: i32,
 
     let measurement = Measurement::new(
         pin_id,
+        voltage_expected,
         average * voltage_coeficient,
         voltage_coeficient,
         average as u16,
         average,
+        attn,
     );
     
     // DEBUG
@@ -249,6 +266,7 @@ pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
     gpio: Arc<Mutex<PIN>>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
+    voltage_expected: f32,
     voltage_coeficient: f32,
     battery_warning_boundary: f32,
     delay: &mut D,
@@ -276,6 +294,7 @@ where
                              pin_id,
                              delay,
                              sender,
+                             voltage_expected,
                              voltage_coeficient,
                              battery_warning_boundary,
                     )?;
@@ -299,6 +318,7 @@ pub fn measure_channel_driver_once<const ATTN: u32, PIN, ADC, D>(
     adc_channel_driver: &mut AdcChannelDriver<ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
+    voltage_expected: f32,
     voltage_coeficient: f32,
     battery_warning_boundary: f32,
     delay: &mut D,
@@ -320,6 +340,7 @@ where
                      pin_id,
                      delay,
                      sender,
+                     voltage_expected,
                      voltage_coeficient,
                      battery_warning_boundary,
             )?;

@@ -1,0 +1,26 @@
+battery_build conan@spongebob:~/git/srbpavel/rust_esp32_std_on_battery$ cargo check
+   Compiling rust_esp32_std_on_battery v0.1.0 (/home/conan/git/srbpavel/rust_esp32_std_on_battery)
+error[E0599]: no method named `read` found for type parameter `ADCD` in the current scope
+   --> src/battery.rs:178:32
+    |
+164 | fn read_adc<ADCCD, ADCD, D>(adc_channel_driver: ADCCD,
+    |                    ---- method `read` not found for this type parameter
+...
+178 |         let value = adc_driver.read(&mut adc_channel_driver)?;
+    |                                ^^^^ method not found in `ADCD`
+    |
+    = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `read`, perhaps you need to restrict type parameter `ADCD` with one of them:
+    |
+164 | fn read_adc<ADCCD, ADCD: FullDuplex, D>(adc_channel_driver: ADCCD,
+    |                        ++++++++++++
+164 | fn read_adc<ADCCD, ADCD: OneShot, D>(adc_channel_driver: ADCCD,
+    |                        +++++++++
+164 | fn read_adc<ADCCD, ADCD: _embedded_hal_blocking_i2c_Read, D>(adc_channel_driver: ADCCD,
+    |                        +++++++++++++++++++++++++++++++++
+164 | fn read_adc<ADCCD, ADCD: _embedded_hal_blocking_rng_Read, D>(adc_channel_driver: ADCCD,
+    |                        +++++++++++++++++++++++++++++++++
+      and 8 other candidates
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `rust_esp32_std_on_battery` (bin "rust_esp32_std_on_battery") due to previous error

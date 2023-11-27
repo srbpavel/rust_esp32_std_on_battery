@@ -45,8 +45,9 @@ const VOLTAGE_DIVIDER_COEFICIENT_GPIO0: f32 = 4.97;
 #[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO1: f32 = 5.03;
 // 4.138v : 0.530 = 7.80 coeficient"
+// 12.830v : 1.642 = 7.81364 coeficient"
 #[allow(unused)]
-const VOLTAGE_DIVIDER_COEFICIENT_GPIO2: f32 = 7.8;  
+const VOLTAGE_DIVIDER_COEFICIENT_GPIO2: f32 = 7.81364;  
 // 4.134v : 0.810 = 5.10 coeficient
 #[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO3: f32 = 5.1;
@@ -55,18 +56,38 @@ const VOLTAGE_DIVIDER_COEFICIENT_GPIO4: f32 = 5.11;
 //const VOLTAGE_DIVIDER_COEFICIENT_GPIO5: f32 = 5.0;
 
 #[allow(unused)]
+const BATTERY_VOLATGE_EXPECTED_GPIO0: f32 = 4200.0;
+#[allow(unused)]
+const BATTERY_VOLATGE_EXPECTED_GPIO1: f32 = 4200.0;
+#[allow(unused)]
+const BATTERY_VOLATGE_EXPECTED_GPIO2: f32 = 13000.0;
+#[allow(unused)]
+const BATTERY_VOLATGE_EXPECTED_GPIO3: f32 = 4200.0;
+#[allow(unused)]
+const BATTERY_VOLATGE_EXPECTED_GPIO4: f32 = 4200.0;
+//const BATTERY_VOLATGE_EXPECTED_GPIO5: f32 = 4200.0;
+
+#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO0: f32 = 3500.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO1: f32 = 3500.0;
 #[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 3700.0;
+const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 12830.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO3: f32 = 3500.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO4: f32 = 3500.0;
 //const BATTERY_WARNING_BOUNDARY_GPIO5: f32 = 3500.0;
+
+//const ATTN_DEFAULT: u32 = attenuation::DB_11;
+const ATTN_GPIO0: u32 = attenuation::DB_2_5;
+const ATTN_GPIO1: u32 = attenuation::DB_2_5;
+const ATTN_GPIO2: u32 = attenuation::DB_11;
+const ATTN_GPIO3: u32 = attenuation::DB_2_5;
+const ATTN_GPIO4: u32 = attenuation::DB_2_5;
+//const ATTN_GPIO5: u32 = attenuation::DB_11;
 
 /*
 ADC_ATTEN_DB_0   | 0 mV ~ 750 mV
@@ -74,8 +95,6 @@ ADC_ATTEN_DB_2_5 | 0 mV ~ 1050 mV
 ADC_ATTEN_DB_6   | 0 mV ~ 1300 mV
 ADC_ATTEN_DB_11  | 0 mV ~ 2500 mV
 */
-const ATTN_ONE: u32 = attenuation::DB_2_5;
-//const ATTN_TWO: u32 = attenuation::DB_2_5;
 
 //
 fn main() -> anyhow::Result<()> {
@@ -119,12 +138,13 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     
     // MEASURE via PIN ONCE
     warn!("MEASURE via PIN: start");
-    if let Err(_e) = battery::measure_pin_once::<_, ADC1, ATTN_ONE, _> (
+    if let Err(_e) = battery::measure_pin_once::<_, ADC1, ATTN_GPIO1, _> (
         pin_adc_1.clone(),
         adc_1.clone(),
         measurement_sender.clone(),
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
-        BATTERY_WARNING_BOUNDARY_GPIO2,
+        BATTERY_VOLATGE_EXPECTED_GPIO1,
+        VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
+        BATTERY_WARNING_BOUNDARY_GPIO1,
         &mut delay_after_measure,
     ) {}
     warn!("MEASURE via PIN: end + sleep/wait");
@@ -132,18 +152,19 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
   
     //MEASURE via ADC_CHANNEL_DRIVER ONCE
     let pin_id = pin_adc_3.pin();
-    let mut adc_channel_driver_three: AdcChannelDriver::<ATTN_ONE, _> = AdcChannelDriver::new(pin_adc_3)?;
+    let mut adc_channel_driver_three: AdcChannelDriver::<ATTN_GPIO3, _> = AdcChannelDriver::new(pin_adc_3)?;
     let adc_1_clone = adc_1.clone();
     let measurement_sender_clone = measurement_sender.clone();
     
     std::thread::spawn(move || {
         warn!("MEASURE via ADC_CHANNEL_DRIVER: start");
 
-        if let Err(_e) = battery::measure_channel_driver_once::<ATTN_ONE, _, ADC1, _> (
+        if let Err(_e) = battery::measure_channel_driver_once::<ATTN_GPIO3, _, ADC1, _> (
             pin_id,
             &mut adc_channel_driver_three,
             adc_1_clone,
             measurement_sender_clone,
+            BATTERY_VOLATGE_EXPECTED_GPIO3,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO3,
             BATTERY_WARNING_BOUNDARY_GPIO3,
             &mut FreeRtos{},
@@ -160,10 +181,11 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     // COMMAND listener
     info!("LISTEN for COMMAND");
     
-    let mut sensor_gpio0 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
+    let mut sensor_gpio0 = battery::Sensor::<_, ADC1, ATTN_GPIO0>::new(
         pin_adc_0,
         adc_1.clone(),
         measurement_sender.clone(),
+        BATTERY_VOLATGE_EXPECTED_GPIO0,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO0,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO0,
@@ -180,10 +202,11 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     )?;
     */
     
-    let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
+    let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_GPIO2>::new(
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
+        BATTERY_VOLATGE_EXPECTED_GPIO2,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO2,
@@ -200,10 +223,11 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
     )?;
     */
     
-    let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
+    let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_GPIO4>::new(
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
+        BATTERY_VOLATGE_EXPECTED_GPIO4,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO4,

@@ -1,0 +1,19 @@
+find src/ -name "*rs" -exec egrep "unwrap" {} +
+
+cargo build --release --target riscv32imc-esp-espidf; ls -la /dev | egrep "ttyACM"
+
+###FLASH
+cargo espflash flash --release --monitor --port /dev/ttyACM2 1>data_peasant_2023_11_22_battery_start.log 2>&1
+
+###MONITOR
+espmonitor --no-reset /dev/ttyACM2
+espmonitor --no-reset /dev/ttyACM2 1>data_peasant_2023_11_22_battery_start.log 2>&1
+
+picocom /dev/ttyACM0 -b 115200
+
+###WATCH
+watch -n0.1 "tail -n40 data_peasant_2023_11_22_battery_start.log 2>&1"
+
+###DEBUG 
+
+
