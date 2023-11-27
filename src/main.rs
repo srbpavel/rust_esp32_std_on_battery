@@ -9,6 +9,8 @@ use log::warn;
 
 mod battery;
 
+use battery::Property;
+
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
@@ -74,7 +76,7 @@ const BATTERY_WARNING_BOUNDARY_GPIO0: f32 = 3500.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO1: f32 = 3500.0;
 #[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 12830.0;
+const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 13000.0;
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO3: f32 = 3500.0;
 #[allow(unused)]
@@ -90,6 +92,21 @@ const ATTN_GPIO4: u32 = attenuation::DB_2_5;
 //const ATTN_GPIO5: u32 = attenuation::DB_11;
 
 /*
+// Type Aliase
+pub type adc_atten_t = u32;
+
+// Constants
+pub const NONE: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_0; // 0u32
+pub const DB_2_5: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_2_5; // 1u32
+pub const DB_6: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_6; // 2u32
+pub const DB_11: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_11; // 3u32
+
+pub const adc_atten_t_ADC_ATTEN_DB_0: u32 = 0; // 0u32
+pub const adc_atten_t_ADC_ATTEN_DB_2_5: u32 = 1; // 1u32
+pub const adc_atten_t_ADC_ATTEN_DB_6: u32 = 2; // 2u32
+pub const adc_atten_t_ADC_ATTEN_DB_11: u32 = 3; // 3u32
+
+// Voltage Range via DB
 ADC_ATTEN_DB_0   | 0 mV ~ 750 mV
 ADC_ATTEN_DB_2_5 | 0 mV ~ 1050 mV
 ADC_ATTEN_DB_6   | 0 mV ~ 1300 mV
@@ -142,9 +159,14 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_1.clone(),
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLTAGE_EXPECTED_GPIO1,
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
-        BATTERY_WARNING_BOUNDARY_GPIO1,
+        Property::new(
+            BATTERY_VOLTAGE_EXPECTED_GPIO1,
+            VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
+            BATTERY_WARNING_BOUNDARY_GPIO1,
+        ),
+        //BATTERY_VOLTAGE_EXPECTED_GPIO1,
+        //VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
+        //BATTERY_WARNING_BOUNDARY_GPIO1,
         &mut delay_after_measure,
     ) {}
     warn!("MEASURE via PIN: end + sleep/wait");
@@ -164,9 +186,11 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
             &mut adc_channel_driver_three,
             adc_1_clone,
             measurement_sender_clone,
-            BATTERY_VOLTAGE_EXPECTED_GPIO3,
-            VOLTAGE_DIVIDER_COEFICIENT_GPIO3,
-            BATTERY_WARNING_BOUNDARY_GPIO3,
+            Property::new(
+                BATTERY_VOLTAGE_EXPECTED_GPIO3,
+                VOLTAGE_DIVIDER_COEFICIENT_GPIO3,
+                BATTERY_WARNING_BOUNDARY_GPIO3,
+            ),
             &mut FreeRtos{},
     ) {}
         warn!("MEASURE via ADC_CHANNEL_DRIVER: end + sleep/wait");
@@ -185,10 +209,12 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_0,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLTAGE_EXPECTED_GPIO0,
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO0,
-        //&mut delay,
-        BATTERY_WARNING_BOUNDARY_GPIO0,
+        Property::new(
+            BATTERY_VOLTAGE_EXPECTED_GPIO0,
+            VOLTAGE_DIVIDER_COEFICIENT_GPIO0,
+            //&mut delay,
+            BATTERY_WARNING_BOUNDARY_GPIO0,
+        ),
     )?;
 
     /* // gpio used for MEASURE via PIN ONCE
@@ -206,10 +232,12 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLTAGE_EXPECTED_GPIO2,
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
-        //&mut delay,
-        BATTERY_WARNING_BOUNDARY_GPIO2,
+        Property::new(
+            BATTERY_VOLTAGE_EXPECTED_GPIO2,
+            VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
+            //&mut delay,
+            BATTERY_WARNING_BOUNDARY_GPIO2,
+        ),
     )?;
 
     /* // gpio used for MEASURE via ADC_CHANNEL_DRIVER ONCE
@@ -227,10 +255,12 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLTAGE_EXPECTED_GPIO4,
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
-        //&mut delay,
-        BATTERY_WARNING_BOUNDARY_GPIO4,
+        Property::new(
+            BATTERY_VOLTAGE_EXPECTED_GPIO4,
+            VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
+            //&mut delay,
+            BATTERY_WARNING_BOUNDARY_GPIO4,
+        ),
     )?;
 
     // COMMAND -> listen and start measuring

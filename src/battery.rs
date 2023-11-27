@@ -19,6 +19,36 @@ use esp_idf_hal::adc::Adc;
 use esp_idf_hal::adc::AdcChannelDriver;
 use esp_idf_hal::adc::AdcDriver;
 
+type Voltage = f32;
+type VoltageDividerCoeficient = f32;
+
+#[derive(Debug, Clone, Copy)]
+#[allow(unused)]
+pub struct Property {
+    voltage_expected: Voltage,
+    voltage_coeficient: VoltageDividerCoeficient,
+    voltage_warning_boundary: Voltage,
+}
+
+impl Property {
+    //
+    pub fn new(voltage_expected: Voltage,
+               voltage_coeficient: VoltageDividerCoeficient,
+               voltage_warning_boundary: Voltage,
+    ) -> Self {
+        Self {
+            voltage_expected,
+            voltage_coeficient,
+            voltage_warning_boundary,
+        }
+    }
+
+    //
+    fn get_boundary(&self) -> Voltage {
+        self.voltage_warning_boundary
+    }
+}
+    
 // for periodic measuring
 //
 // https://users.rust-lang.org/t/how-to-store-a-trait-as-field-of-a-struct/87762/2
@@ -54,10 +84,11 @@ pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
     adc_channel_driver: AdcChannelDriver<'a, ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    voltage_expected: f32,
-    voltage_coeficient: f32,
+    //voltage_expected: Voltage,
+    //voltage_coeficient: Voltage,
     //delay: &'b mut D,
-    battery_warning_boundary: f32,
+    //attery_warning_boundary: Voltage,
+    property: Property,
 }
 
 impl<PIN, ADC, const ATTN: u32> Sensor<'_, PIN, ADC, ATTN>
@@ -72,10 +103,11 @@ where
     pub fn new(gpio: PIN,
                adc_peripheral: Arc<Mutex<ADC>>,
                sender: Sender<Measurement>,
-               voltage_expected: f32,
-               voltage_coeficient: f32,
+               //voltage_expected: Voltage,
+               //voltage_coeficient: f32,
                //delay: &mut D,
-               battery_warning_boundary: f32,
+               //battery_warning_boundary: Voltage,
+               property: Property,
     ) -> Result<Self, esp_idf_sys::EspError>
      {
          let pin_id = gpio.pin();
@@ -88,9 +120,17 @@ where
                  adc_channel_driver,
                  adc_peripheral,
                  sender,
-                 voltage_expected,
-                 voltage_coeficient,
-                 battery_warning_boundary,
+                 //voltage_expected,
+                 //voltage_coeficient,
+                 //battery_warning_boundary,
+                 /*
+                 Property::new(
+                     voltage_expected,
+                     voltage_coeficient,
+                     battery_warning_boundary,
+                 ),
+                 */
+                 property,
              }
          )
      }
@@ -114,9 +154,10 @@ where
                          self.pin_id,
                          delay,
                          self.sender.clone(),
-                         self.voltage_expected,
-                         self.voltage_coeficient,
-                         self.battery_warning_boundary,
+                         //self.voltage_expected,
+                         //self.voltage_coeficient,
+                         //self.battery_warning_boundary,
+                         self.property,
                 )?;
             },
             Err(_e) => {},
@@ -135,9 +176,10 @@ pub enum Command {
 #[allow(unused)]
 pub struct Measurement {
     pin_id: i32,
-    voltage_expected: f32,
-    voltage: f32,
-    voltage_coeficient: f32,
+    property: Property,
+    //voltage_expected: Voltage,
+    voltage: Voltage,
+    //voltage_coeficient: VoltageDividerCoeficient,
     raw_u16: u16,
     raw_f32: f32,
     attn: u32,
@@ -146,18 +188,20 @@ pub struct Measurement {
 impl Measurement {
     //
     fn new(pin_id: i32,
-           voltage_expected: f32,
-           voltage: f32,
-           voltage_coeficient: f32,
+           property: Property,
+           //voltage_expected: Voltage,
+           voltage: Voltage,
+           //voltage_coeficient: f32,
            raw_u16: u16,
            raw_f32: f32,
            attn: u32,
     ) -> Self {
         Self {
             pin_id,
-            voltage_expected,
+            property,
+            //voltage_expected,
             voltage,
-            voltage_coeficient,
+            //voltage_coeficient,
             raw_u16,
             raw_f32,
             attn,
@@ -165,8 +209,15 @@ impl Measurement {
     }
     
     //
-    pub fn get_voltage(&self) -> f32 {
+    fn get_voltage(&self) -> Voltage {
         self.voltage
+    }
+
+    //
+    fn verify_boundary(&self) {
+        if self.get_voltage() < self.property.get_boundary() {
+            error!("BATTERY too low, replace with new !!!");
+        }
     }
 }
 
@@ -179,9 +230,11 @@ fn read_adc<'a, PIN: ADCPin, ADC, const ATTN: u32, D>(
     pin_id: i32,
     delay: &mut D,
     sender: Sender<Measurement>,
-    voltage_expected: f32,
-    voltage_coeficient: f32,
-    battery_warning_boundary: f32,
+    //voltage_expected: Voltage,
+    //voltage_coeficient: Voltage,
+    //battery_warning_boundary: Voltage,
+    property: Property,
+    //property: &Property,
 ) -> Result<(), esp_idf_sys::EspError>
 where
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
@@ -209,14 +262,17 @@ where
 
     let measurement = calculate_measured_data(pin_id,
                                               values,
-                                              voltage_expected,
-                                              voltage_coeficient,
+                                              //voltage_expected,
+                                              //voltage_coeficient,
+                                              property,
                                               ATTN,
     );
-    
+
+    /*
     if measurement.get_voltage() < battery_warning_boundary {
         error!("BATTERY too low, replace with new !!!");
     }
+    */
     
     // send measurement
     if let Err(e) = sender.send(measurement) {
@@ -229,8 +285,9 @@ where
 //
 fn calculate_measured_data(pin_id: i32,
                            values: Vec<u16>,
-                           voltage_expected: f32,
-                           voltage_coeficient: f32,
+                           //voltage_expected: Voltage,
+                           //voltage_coeficient: f32,
+                           property: Property,
                            attn: u32,
 ) -> Measurement {
     let average: f32 = values
@@ -238,15 +295,21 @@ fn calculate_measured_data(pin_id: i32,
         .sum::<u16>() as f32
         / (values.len() as f32);
 
+    let voltage = average * property.voltage_coeficient.clone();
+    
     let measurement = Measurement::new(
         pin_id,
-        voltage_expected,
-        average * voltage_coeficient,
-        voltage_coeficient,
+        property,
+        //voltage_expected,
+        //average * property.voltage_coeficient,
+        voltage,
+        //voltage_coeficient,
         average as u16,
         average,
         attn,
     );
+
+    measurement.verify_boundary();
     
     // DEBUG
     warn!("$$$ ADC -> average: {} mV / {}",
@@ -266,9 +329,10 @@ pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
     gpio: Arc<Mutex<PIN>>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    voltage_expected: f32,
-    voltage_coeficient: f32,
-    battery_warning_boundary: f32,
+    //voltage_expected: Voltage,
+    //voltage_coeficient: Voltage,
+    //battery_warning_boundary: Voltage,
+    property: Property,
     delay: &mut D,
 ) -> Result<(), esp_idf_sys::EspError>
 where
@@ -294,9 +358,10 @@ where
                              pin_id,
                              delay,
                              sender,
-                             voltage_expected,
-                             voltage_coeficient,
-                             battery_warning_boundary,
+                             //voltage_expected,
+                             //voltage_coeficient,
+                             //battery_warning_boundary,
+                             property,
                     )?;
                 },
                 Err(_e) => {},
@@ -318,9 +383,10 @@ pub fn measure_channel_driver_once<const ATTN: u32, PIN, ADC, D>(
     adc_channel_driver: &mut AdcChannelDriver<ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    voltage_expected: f32,
-    voltage_coeficient: f32,
-    battery_warning_boundary: f32,
+    //voltage_expected: Voltage,
+    //voltage_coeficient: Voltage,
+    //battery_warning_boundary: Voltage,
+    property: Property,
     delay: &mut D,
 ) -> Result<(), esp_idf_sys::EspError> 
 where
@@ -340,9 +406,10 @@ where
                      pin_id,
                      delay,
                      sender,
-                     voltage_expected,
-                     voltage_coeficient,
-                     battery_warning_boundary,
+                     //voltage_expected,
+                     //voltage_coeficient,
+                     //battery_warning_boundary,
+                     property,
             )?;
         },
         Err(_e) => {},
