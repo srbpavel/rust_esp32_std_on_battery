@@ -37,65 +37,48 @@ const MACHINE_NAME: &str = "peasant";
 pub const ADC_READ_REPETITION: u8 = 10;
 
 const DELAY_SLEEP_DURATION_MS: u32 = 30*1000;
-//const DELAY_COMMAND_DURATION_MS: u32 = 100;
-pub const DELAY_MEASUREMENT_MS: u32 = 100;
+const DELAY_MEASUREMENT_MS: u32 = 100;
 
-#[allow(unused)]
-const VOLTAGE_DIVIDER_COEFICIENT_DEFAULT: f32 = 5.0;
-#[allow(unused)]
+const BATTERY_VOLTAGE_EXPECTED_GPIO0: f32 = 4138.0;
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO0: f32 = 4.97;
-#[allow(unused)]
+const BATTERY_WARNING_BOUNDARY_GPIO0: f32 = 3500.0;
+const ATTN_GPIO0: u32 = attenuation::DB_2_5;
+
+const BATTERY_VOLTAGE_EXPECTED_GPIO1: f32 = 4138.0;
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO1: f32 = 5.03;
+const BATTERY_WARNING_BOUNDARY_GPIO1: f32 = 3500.0;
+const ATTN_GPIO1: u32 = attenuation::DB_2_5;
+
+const BATTERY_VOLTAGE_EXPECTED_GPIO2: f32 = 12830.0;
 // 4.138v : 0.530 = 7.80 coeficient"
 // 12.830v : 1.642 = 7.81364 coeficient"
-#[allow(unused)]
 const VOLTAGE_DIVIDER_COEFICIENT_GPIO2: f32 = 7.81364;  
-// 4.134v : 0.810 = 5.10 coeficient
-#[allow(unused)]
-const VOLTAGE_DIVIDER_COEFICIENT_GPIO3: f32 = 5.1;
-#[allow(unused)]
-const VOLTAGE_DIVIDER_COEFICIENT_GPIO4: f32 = 5.11;
-//const VOLTAGE_DIVIDER_COEFICIENT_GPIO5: f32 = 5.0;
-
-#[allow(unused)]
-const BATTERY_VOLTAGE_EXPECTED_GPIO0: f32 = 4200.0;
-#[allow(unused)]
-const BATTERY_VOLTAGE_EXPECTED_GPIO1: f32 = 4200.0;
-#[allow(unused)]
-const BATTERY_VOLTAGE_EXPECTED_GPIO2: f32 = 13000.0;
-#[allow(unused)]
-const BATTERY_VOLTAGE_EXPECTED_GPIO3: f32 = 4200.0;
-#[allow(unused)]
-const BATTERY_VOLTAGE_EXPECTED_GPIO4: f32 = 4200.0;
-//const BATTERY_VOLTAGE_EXPECTED_GPIO5: f32 = 4200.0;
-
-#[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
-#[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO0: f32 = 3500.0;
-#[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO1: f32 = 3500.0;
-#[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_GPIO2: f32 = 13000.0;
-#[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO3: f32 = 3500.0;
-#[allow(unused)]
-const BATTERY_WARNING_BOUNDARY_GPIO4: f32 = 3500.0;
-//const BATTERY_WARNING_BOUNDARY_GPIO5: f32 = 3500.0;
-
-//const ATTN_DEFAULT: u32 = attenuation::DB_11;
-const ATTN_GPIO0: u32 = attenuation::DB_2_5;
-const ATTN_GPIO1: u32 = attenuation::DB_2_5;
 const ATTN_GPIO2: u32 = attenuation::DB_11;
+
+const BATTERY_VOLTAGE_EXPECTED_GPIO3: f32 = 4138.0;
+// 4.134v : 0.810 = 5.10 coeficient
+const VOLTAGE_DIVIDER_COEFICIENT_GPIO3: f32 = 5.1;
+const BATTERY_WARNING_BOUNDARY_GPIO3: f32 = 3500.0;
 const ATTN_GPIO3: u32 = attenuation::DB_2_5;
+
+const BATTERY_VOLTAGE_EXPECTED_GPIO4: f32 = 4138.0;
+const VOLTAGE_DIVIDER_COEFICIENT_GPIO4: f32 = 5.11;
+const BATTERY_WARNING_BOUNDARY_GPIO4: f32 = 3500.0;
 const ATTN_GPIO4: u32 = attenuation::DB_2_5;
-//const ATTN_GPIO5: u32 = attenuation::DB_11;
+
+/*
+const BATTERY_VOLTAGE_EXPECTED_GPIO5: f32 = 4138.0;
+const VOLTAGE_DIVIDER_COEFICIENT_GPIO5: f32 = 5.10;
+const BATTERY_WARNING_BOUNDARY_GPIO5: f32 = 3500.0;
+const ATTN_GPIO5: u32 = attenuation::DB_11;
+*/
 
 /*
 // Type Aliase
 pub type adc_atten_t = u32;
 
-// Constants
+// Constants info from DOC
 pub const NONE: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_0; // 0u32
 pub const DB_2_5: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_2_5; // 1u32
 pub const DB_6: adc_atten_t = adc_atten_t_ADC_ATTEN_DB_6; // 2u32
@@ -164,9 +147,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
             VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
             BATTERY_WARNING_BOUNDARY_GPIO1,
         ),
-        //BATTERY_VOLTAGE_EXPECTED_GPIO1,
-        //VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
-        //BATTERY_WARNING_BOUNDARY_GPIO1,
         &mut delay_after_measure,
     ) {}
     warn!("MEASURE via PIN: end + sleep/wait");
@@ -212,22 +192,10 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         Property::new(
             BATTERY_VOLTAGE_EXPECTED_GPIO0,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO0,
-            //&mut delay,
             BATTERY_WARNING_BOUNDARY_GPIO0,
         ),
     )?;
 
-    /* // gpio used for MEASURE via PIN ONCE
-    let mut sensor_gpio1 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-        pin_adc_1,
-        adc_1.clone(),
-        measurement_sender.clone(),
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
-        //&mut delay,
-        BATTERY_WARNING_BOUNDARY_GPIO1,
-    )?;
-    */
-    
     let mut sensor_gpio2 = battery::Sensor::<_, ADC1, ATTN_GPIO2>::new(
         pin_adc_2,
         adc_1.clone(),
@@ -240,17 +208,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         ),
     )?;
 
-    /* // gpio used for MEASURE via ADC_CHANNEL_DRIVER ONCE
-    let mut sensor_gpio3 = battery::Sensor::<_, ADC1, ATTN_ONE>::new(
-        pin_adc_3,
-        adc_1.clone(),
-        measurement_sender.clone(),
-        VOLTAGE_DIVIDER_COEFICIENT_GPIO,
-        //&mut delay,
-        BATTERY_WARNING_BOUNDARY_GPIO,
-    )?;
-    */
-    
     let mut sensor_gpio4 = battery::Sensor::<_, ADC1, ATTN_GPIO4>::new(
         pin_adc_4,
         adc_1.clone(),
@@ -258,7 +215,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         Property::new(
             BATTERY_VOLTAGE_EXPECTED_GPIO4,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
-            //&mut delay,
             BATTERY_WARNING_BOUNDARY_GPIO4,
         ),
     )?;
@@ -324,21 +280,18 @@ where
                 .send(battery::Command::Measure(3i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(4i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(0i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
@@ -346,14 +299,12 @@ where
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
 
-            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             if let Err(e) = command_sender
                 .clone()
                 .send(battery::Command::Measure(2i32)) {
                     error!("### Error: Send(Command::Measure) -> {e:?}");
                 }
-            //delay.delay_ms(DELAY_COMMAND_DURATION_MS);
             
             // ADC_2
             if let Err(e) = command_sender

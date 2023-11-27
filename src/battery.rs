@@ -79,34 +79,23 @@ help: consider restricting type parameter `PIN`
 For more information about this error, try `rustc --explain E0277`.
 */
 pub struct Sensor<'a, PIN: ADCPin, ADC, const ATTN: u32> {
-//pub struct Sensor<'a, 'b, PIN: ADCPin, ADC, const ATTN: u32, D> {
     pin_id: i32,
     adc_channel_driver: AdcChannelDriver<'a, ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    //voltage_expected: Voltage,
-    //voltage_coeficient: Voltage,
-    //delay: &'b mut D,
-    //attery_warning_boundary: Voltage,
     property: Property,
 }
 
 impl<PIN, ADC, const ATTN: u32> Sensor<'_, PIN, ADC, ATTN>
-//impl<PIN, ADC, const ATTN: u32, D> Sensor<'_, '_, PIN, ADC, ATTN, D>
 where
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
     ADC: Adc + Peripheral<P = ADC>, <ADC as Peripheral>::P: Adc,
-    //D: embedded_hal::blocking::delay::DelayMs<u32> + std::marker::Send + 'static,
 {
 
     //
     pub fn new(gpio: PIN,
                adc_peripheral: Arc<Mutex<ADC>>,
                sender: Sender<Measurement>,
-               //voltage_expected: Voltage,
-               //voltage_coeficient: f32,
-               //delay: &mut D,
-               //battery_warning_boundary: Voltage,
                property: Property,
     ) -> Result<Self, esp_idf_sys::EspError>
      {
@@ -120,16 +109,6 @@ where
                  adc_channel_driver,
                  adc_peripheral,
                  sender,
-                 //voltage_expected,
-                 //voltage_coeficient,
-                 //battery_warning_boundary,
-                 /*
-                 Property::new(
-                     voltage_expected,
-                     voltage_coeficient,
-                     battery_warning_boundary,
-                 ),
-                 */
                  property,
              }
          )
@@ -154,9 +133,6 @@ where
                          self.pin_id,
                          delay,
                          self.sender.clone(),
-                         //self.voltage_expected,
-                         //self.voltage_coeficient,
-                         //self.battery_warning_boundary,
                          self.property,
                 )?;
             },
@@ -177,9 +153,7 @@ pub enum Command {
 pub struct Measurement {
     pin_id: i32,
     property: Property,
-    //voltage_expected: Voltage,
     voltage: Voltage,
-    //voltage_coeficient: VoltageDividerCoeficient,
     raw_u16: u16,
     raw_f32: f32,
     attn: u32,
@@ -189,9 +163,7 @@ impl Measurement {
     //
     fn new(pin_id: i32,
            property: Property,
-           //voltage_expected: Voltage,
            voltage: Voltage,
-           //voltage_coeficient: f32,
            raw_u16: u16,
            raw_f32: f32,
            attn: u32,
@@ -199,9 +171,7 @@ impl Measurement {
         Self {
             pin_id,
             property,
-            //voltage_expected,
             voltage,
-            //voltage_coeficient,
             raw_u16,
             raw_f32,
             attn,
@@ -230,11 +200,7 @@ fn read_adc<'a, PIN: ADCPin, ADC, const ATTN: u32, D>(
     pin_id: i32,
     delay: &mut D,
     sender: Sender<Measurement>,
-    //voltage_expected: Voltage,
-    //voltage_coeficient: Voltage,
-    //battery_warning_boundary: Voltage,
     property: Property,
-    //property: &Property,
 ) -> Result<(), esp_idf_sys::EspError>
 where
     PIN: esp_idf_hal::gpio::IOPin + ADCPin<Adc = ADC>,
@@ -262,18 +228,10 @@ where
 
     let measurement = calculate_measured_data(pin_id,
                                               values,
-                                              //voltage_expected,
-                                              //voltage_coeficient,
                                               property,
                                               ATTN,
     );
 
-    /*
-    if measurement.get_voltage() < battery_warning_boundary {
-        error!("BATTERY too low, replace with new !!!");
-    }
-    */
-    
     // send measurement
     if let Err(e) = sender.send(measurement) {
         error!("Error: sender .send(measurement) -> {e:?}");
@@ -285,12 +243,10 @@ where
 //
 fn calculate_measured_data(pin_id: i32,
                            values: Vec<u16>,
-                           //voltage_expected: Voltage,
-                           //voltage_coeficient: f32,
                            property: Property,
                            attn: u32,
 ) -> Measurement {
-    let average: f32 = values
+    let average: Voltage = values
         .iter()
         .sum::<u16>() as f32
         / (values.len() as f32);
@@ -300,10 +256,7 @@ fn calculate_measured_data(pin_id: i32,
     let measurement = Measurement::new(
         pin_id,
         property,
-        //voltage_expected,
-        //average * property.voltage_coeficient,
         voltage,
-        //voltage_coeficient,
         average as u16,
         average,
         attn,
@@ -329,9 +282,6 @@ pub fn measure_pin_once<PIN, ADC, const ATTN: u32, D>(
     gpio: Arc<Mutex<PIN>>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    //voltage_expected: Voltage,
-    //voltage_coeficient: Voltage,
-    //battery_warning_boundary: Voltage,
     property: Property,
     delay: &mut D,
 ) -> Result<(), esp_idf_sys::EspError>
@@ -358,9 +308,6 @@ where
                              pin_id,
                              delay,
                              sender,
-                             //voltage_expected,
-                             //voltage_coeficient,
-                             //battery_warning_boundary,
                              property,
                     )?;
                 },
@@ -383,9 +330,6 @@ pub fn measure_channel_driver_once<const ATTN: u32, PIN, ADC, D>(
     adc_channel_driver: &mut AdcChannelDriver<ATTN, PIN>,
     adc_peripheral: Arc<Mutex<ADC>>,
     sender: Sender<Measurement>,
-    //voltage_expected: Voltage,
-    //voltage_coeficient: Voltage,
-    //battery_warning_boundary: Voltage,
     property: Property,
     delay: &mut D,
 ) -> Result<(), esp_idf_sys::EspError> 
@@ -406,9 +350,6 @@ where
                      pin_id,
                      delay,
                      sender,
-                     //voltage_expected,
-                     //voltage_coeficient,
-                     //battery_warning_boundary,
                      property,
             )?;
         },
