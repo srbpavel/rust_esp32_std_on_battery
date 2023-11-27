@@ -203,7 +203,6 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         Property::new(
             BATTERY_VOLTAGE_EXPECTED_GPIO2,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
-            //&mut delay,
             BATTERY_WARNING_BOUNDARY_GPIO2,
         ),
     )?;

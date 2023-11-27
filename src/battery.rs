@@ -47,6 +47,11 @@ impl Property {
     fn get_boundary(&self) -> Voltage {
         self.voltage_warning_boundary
     }
+
+    //
+    fn get_coeficient(&self) -> VoltageDividerCoeficient {
+        self.voltage_coeficient
+    }
 }
     
 // for periodic measuring
@@ -251,12 +256,10 @@ fn calculate_measured_data(pin_id: i32,
         .sum::<u16>() as f32
         / (values.len() as f32);
 
-    let voltage = average * property.voltage_coeficient.clone();
-    
     let measurement = Measurement::new(
         pin_id,
         property,
-        voltage,
+        average * property.get_coeficient(),
         average as u16,
         average,
         attn,
