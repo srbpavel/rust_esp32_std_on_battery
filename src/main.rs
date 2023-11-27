@@ -56,16 +56,16 @@ const VOLTAGE_DIVIDER_COEFICIENT_GPIO4: f32 = 5.11;
 //const VOLTAGE_DIVIDER_COEFICIENT_GPIO5: f32 = 5.0;
 
 #[allow(unused)]
-const BATTERY_VOLATGE_EXPECTED_GPIO0: f32 = 4200.0;
+const BATTERY_VOLTAGE_EXPECTED_GPIO0: f32 = 4200.0;
 #[allow(unused)]
-const BATTERY_VOLATGE_EXPECTED_GPIO1: f32 = 4200.0;
+const BATTERY_VOLTAGE_EXPECTED_GPIO1: f32 = 4200.0;
 #[allow(unused)]
-const BATTERY_VOLATGE_EXPECTED_GPIO2: f32 = 13000.0;
+const BATTERY_VOLTAGE_EXPECTED_GPIO2: f32 = 13000.0;
 #[allow(unused)]
-const BATTERY_VOLATGE_EXPECTED_GPIO3: f32 = 4200.0;
+const BATTERY_VOLTAGE_EXPECTED_GPIO3: f32 = 4200.0;
 #[allow(unused)]
-const BATTERY_VOLATGE_EXPECTED_GPIO4: f32 = 4200.0;
-//const BATTERY_VOLATGE_EXPECTED_GPIO5: f32 = 4200.0;
+const BATTERY_VOLTAGE_EXPECTED_GPIO4: f32 = 4200.0;
+//const BATTERY_VOLTAGE_EXPECTED_GPIO5: f32 = 4200.0;
 
 #[allow(unused)]
 const BATTERY_WARNING_BOUNDARY_DEFAULT: f32 = 3700.0;
@@ -142,7 +142,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_1.clone(),
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLATGE_EXPECTED_GPIO1,
+        BATTERY_VOLTAGE_EXPECTED_GPIO1,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO1,
         BATTERY_WARNING_BOUNDARY_GPIO1,
         &mut delay_after_measure,
@@ -164,7 +164,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
             &mut adc_channel_driver_three,
             adc_1_clone,
             measurement_sender_clone,
-            BATTERY_VOLATGE_EXPECTED_GPIO3,
+            BATTERY_VOLTAGE_EXPECTED_GPIO3,
             VOLTAGE_DIVIDER_COEFICIENT_GPIO3,
             BATTERY_WARNING_BOUNDARY_GPIO3,
             &mut FreeRtos{},
@@ -185,7 +185,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_0,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLATGE_EXPECTED_GPIO0,
+        BATTERY_VOLTAGE_EXPECTED_GPIO0,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO0,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO0,
@@ -206,7 +206,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_2,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLATGE_EXPECTED_GPIO2,
+        BATTERY_VOLTAGE_EXPECTED_GPIO2,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO2,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO2,
@@ -227,7 +227,7 @@ E (3492) ADC: adc2_get_raw(750): adc unit not supporte
         pin_adc_4,
         adc_1.clone(),
         measurement_sender.clone(),
-        BATTERY_VOLATGE_EXPECTED_GPIO4,
+        BATTERY_VOLTAGE_EXPECTED_GPIO4,
         VOLTAGE_DIVIDER_COEFICIENT_GPIO4,
         //&mut delay,
         BATTERY_WARNING_BOUNDARY_GPIO4,
