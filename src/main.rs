@@ -36,6 +36,8 @@ const MACHINE_NAME: &str = "peasant";
 
 pub const ADC_READ_REPETITION: u8 = 10;
 
+const STATUS_MSG: &str = "MEASUREMENT";
+
 const DELAY_SLEEP_DURATION_MS: u32 = 30*1000;
 const DELAY_MEASUREMENT_MS: u32 = 100;
 
@@ -253,11 +255,9 @@ fn start_measurement_listener(
 ) {
     std::thread::spawn(move || {
         info!("thread MEASUREMENT");
-        
+
         while let Ok(channel_data) = measurement_receiver.recv() {
-            info!("MEASUREMENT value: {:?}",
-                  channel_data,
-            );
+            channel_data.get_status(STATUS_MSG);
         }
     });
 }

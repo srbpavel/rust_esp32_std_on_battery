@@ -22,6 +22,50 @@ use esp_idf_hal::adc::AdcDriver;
 type Voltage = f32;
 type VoltageDividerCoeficient = f32;
 
+#[derive(Debug)]
+pub enum Status {
+    Full,
+    ToReplace,
+    Init,
+    Unknown
+}
+
+impl Status {
+    //
+    pub fn show(&self,
+                msg: &str,
+                measurement: &Measurement,
+    ) {
+        // try harder to format! dynamicky and not repeat !!!
+        match self {
+            Self::Full => {
+                info!("{}: {:?}",
+                      msg,
+                      measurement,
+                );
+            },
+            Self::ToReplace => {
+                error!("{}: {:?}",
+                       msg,
+                       measurement,
+                );
+            },
+            Self::Init => {
+                warn!("{}: {:?}",
+                      msg,
+                      measurement,
+                );
+            },
+            Self::Unknown => {
+                warn!("verify battery and cables, value is too low!!! \n{}  {:?}",
+                      msg,
+                      measurement,
+                );
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[allow(unused)]
 pub struct Property {
@@ -162,6 +206,7 @@ pub struct Measurement {
     raw_u16: u16,
     raw_f32: f32,
     attn: u32,
+    status: Status,
 }
 
 impl Measurement {
@@ -180,6 +225,7 @@ impl Measurement {
             raw_u16,
             raw_f32,
             attn,
+            status: Status::Init,
         }
     }
     
@@ -189,10 +235,30 @@ impl Measurement {
     }
 
     //
-    fn verify_boundary(&self) {
-        if self.get_voltage() < self.property.get_boundary() {
-            error!("BATTERY too low, replace with new !!!");
-        }
+    fn verify_boundary(&mut self) {
+        let voltage = self.get_voltage();
+        let boundary = self.property.get_boundary();
+
+        self.status =
+            // 27.335 < (3500/2) [half of boundary]
+            // as raw_u16: 5 and raw_f32: 5.1 * coeficient: 4.97 = 2.335
+            if voltage < (boundary/2.0) {
+                Status::Unknown
+            // 3300 < 3500
+            } else if voltage < boundary {
+                Status::ToReplace
+            // 4138
+            } else {
+                Status::Full
+            };
+    }
+
+    //
+    pub fn get_status(&self,
+                      msg: &str,
+    ) {
+        self.status.show(&msg,
+                         self,);
     }
 }
 
@@ -256,7 +322,7 @@ fn calculate_measured_data(pin_id: i32,
         .sum::<u16>() as f32
         / (values.len() as f32);
 
-    let measurement = Measurement::new(
+    let mut measurement = Measurement::new(
         pin_id,
         property,
         average * property.get_coeficient(),
@@ -264,11 +330,11 @@ fn calculate_measured_data(pin_id: i32,
         average,
         attn,
     );
-
+    
     measurement.verify_boundary();
     
     // DEBUG
-    warn!("$$$ ADC -> average: {} mV / {}",
+    info!("$$$ ADC -> average: {} mV / {}V",
           average,
           measurement.voltage,
     );
